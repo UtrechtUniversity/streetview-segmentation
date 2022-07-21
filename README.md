@@ -49,9 +49,9 @@ For example, model 47430278_4 links to [its configuration in the Mask2Former rep
 
 Enter this into the config file as:
 ```json
-[...]
+...
 "path_model_cfg" : "/configs/coco/panoptic-segmentation/maskformer2_R50_bs16_50ep.yaml",
-[...]
+...
 ```
 
 ### Weights-file
@@ -61,9 +61,9 @@ the file in a folder that will be mapped into the container, and edit the config
 path as it is "seen" from inside the container):
 
 ```json
-[...]
+...
 "path_model_weights" : "/data/model/model_final_94dc52.pkl",
-[...]
+...
 ```
 
 Note that we have tested the software with only one model, Mapillary Vistas Panoptic Segmentation, based
