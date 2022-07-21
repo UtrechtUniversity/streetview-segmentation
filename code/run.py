@@ -199,8 +199,7 @@ class ImageSegmentation:
                 output_folder = os.path.join(self.image_dir,(re.sub(r'[^a-zA-Z\d\s:]','_',re.sub(r'(^[^a-zA-Z\d\s:]*|\.(.*)$)','',os.path.basename(image_url)))) + "/")
 
                 if not os.path.exists(output_folder):
-                    # 0o1411 = 777
-                    os.mkdir(output_folder,mode=0o777)
+                    os.mkdir(output_folder)
 
                 new_paths = self.do_transform360(image_url,output_folder)
                 new_images += new_paths
@@ -318,13 +317,12 @@ class ImageSegmentation:
                 if self.save_segmentation_images:
                     seg_folder = os.path.join(os.path.dirname(image_url),"segmentations")
                     if not os.path.exists(seg_folder):
-                        os.mkdir(seg_folder,mode=0o777)
+                        os.mkdir(seg_folder)
 
                     name_bits = os.path.splitext(os.path.basename(image_url))
                     seg_file = os.path.join(seg_folder,f'{name_bits[0]}-segmentation{name_bits[1]}')
 
                     cv2.imwrite(seg_file, semantic_result)
-                    os.chmod(seg_file,mode=0o777)
                     self.logger.info(f"saved '{seg_file}'")
 
                 # talk to user
