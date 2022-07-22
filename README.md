@@ -11,7 +11,8 @@ onto a cube, resulting in six images per input image.
 This script is specifically designed to run on a computer without a GPU. Some of the underlying libraries
 require the presence of CUDA-drivers to run, even if the actual device is absent. As it can be problematic to
 install such drivers on a computer without an actual GPU, the program is packaged as Docker-container, based on
-an official NVIDIA-image, which comes with pre-installed drivers.
+an official NVIDIA-image, which comes with pre-installed drivers. Building and running the container requires
+the presence of [Docker enginge](https://docs.docker.com/engine/install/).
 
 ## Building the docker container
 Check out this repository, and run to build:
