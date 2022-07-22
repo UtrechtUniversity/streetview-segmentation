@@ -15,16 +15,15 @@ an official NVIDIA-image, which comes with pre-installed drivers. Building and r
 the presence of [Docker enginge](https://docs.docker.com/engine/install/).
 
 ## Building the docker container
-Check out this repository, and run to build:
+Check out this repository, and to build, run:
 ```bash
 docker build -t my_tag:latest -f Dockerfile .
 ```
 
 ## Getting model files
-
-Models consist of two parts: configuration files, and a file with weights. The configuration files are located in
-the Mask2Former repository, which is included in the container at build time. Weights files have not been built
-into the container, and must be downloaded and made available to the script in the container.
+Models have two parts: configuration files, and a file with weights. The configuration files are located in
+the Mask2Former repository, which is included in the container at build time. Weights files are not included
+in the container; they must be downloaded and made available to the script in the container.
 
 After selecting the appropriate model configuration files and downloading the corresponding file with model weights,
 the location of both needs to registered in a configuration file. For example:
@@ -35,8 +34,8 @@ the location of both needs to registered in a configuration file. For example:
     "path_model_weights" : "/data/model/maskformer2_swin_large_IN21k_384_bs16_100ep/model_final_f07440.pkl"
 }
 ```
-
-Save this to a configuration file, which will be passed to the script using the `--config` parameter.
+See below for more detail on the paths. Save this to a configuration file, which will be passed to the script using
+the `--config` parameter.
 
 Please note that the software has been tested with a limited number of models, specifically one from the Mapillary Vistas
 Panoptic Segmentation collection (model_id 49189528_0), one from the COCO Panoptic Segmentation collection (47429163_0),
@@ -46,11 +45,11 @@ and one from the Cityscapes set (48318254_2). Generally, the Swin-L based models
 Go the [Mask2Model Model Zoo](https://github.com/facebookresearch/Mask2Former/blob/main/MODEL_ZOO.md) and pick
 a model to use. Find the path of the model's configuration file by clicking the 'Mask2Former' link for the appropriate
 model in the Model Zoo-table. This leads to the corresponding configuration file in the Mask2Former repository.
-Extract the path of that file relative to the repository's root, as it would be when the repository were checked out.
+Take the path of that file relative to the repository's root, as it would be when the repository were checked out.
 
 Example: the first model from the COCO Model Zoo, Panoptic Segmentation-table (model_id 47430278_4) links to [its configuration
 in the Mask2Former repo](https://github.com/facebookresearch/Mask2Former/blob/main/configs/coco/panoptic-segmentation/maskformer2_R50_bs16_50ep.yaml),
-the path of which, when checked out, would be:
+the relative path of which, when checked out, would be:
 
 `Mask2Former/configs/coco/panoptic-segmentation/maskformer2_R50_bs16_50ep.yaml`
 
@@ -58,6 +57,27 @@ This would be entered into the config file as:
 ```json
 "path_model_cfg" : "/configs/coco/panoptic-segmentation/maskformer2_R50_bs16_50ep.yaml",
 ```
+
+#### External configuration
+If the configuration of a specific model is not present in the container (for example because it was added to the Model Zoo
+after the instance of the container was built), it can be made available to the script from a location outside of the container,
+much in the same way as a weights file (see next paragraph). Download the configuration file or files, make them available to
+the container via a volume mapping, and update the value for `path_model_cfg` accordingly. The script will first look for the
+file in its Mask2Former repository, and, if it isn't found there, subsequently in the absolute location specified in `path_model_cfg`.
+For example, if `path_model_cfg` is set to
+
+`/data/model/config/my_maskformer2.yaml`
+
+the script will first look for
+
+`../Mask2Former/data/model/config/my_maskformer2.yaml`
+
+and failing that, look for
+
+`/data/model/config/my_maskformer2.yaml`
+
+which is a location that can be mapped to a folder on the host-machine. When using a external configuration, make sure to include *all*
+yaml-files required; model configurations are usually made up of several files, chained by \_BASE\_ statements.
 
 
 ### Weights-file
