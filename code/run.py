@@ -42,6 +42,7 @@ class ImageSegmentation:
 
     image_dir = None
     tranform360 = None
+    transform360exclude = []
     save_segmentation_images = None
     model_base_path = None
     code_base_path = None
@@ -82,15 +83,19 @@ class ImageSegmentation:
         self.model_base_path = "/" + LOCAL_MODEL_BASE_PATH.lstrip("/")
         self.mask2former_repo = MASK2FORMER_REPO
 
+    def comma_list(self,string):
+        return list(map(lambda a: a.strip(),string.split(",")))
+
     def parse_arguments(self):
         """
         parse_arguments() parses command line arguments, assigning them to self.vars.
         """         
         parser = argparse.ArgumentParser(description="Semantic segmentation of images")
-        parser.add_argument("--input",type=str,required=True,help="path to input e.g. './input/'")
-        parser.add_argument("--config",type=str,required=True,help="path to config file")
-        parser.add_argument("--transform360", action='store_true')
-        parser.add_argument("--save-segmentation-images", action='store_true')
+        parser.add_argument("--input",type=str,required=True,help="path to input folder, e.g. './input/'")
+        parser.add_argument("--config",type=str,required=True,help="path to config file containing model paths")
+        parser.add_argument("--transform360", action='store_true',help="input is 360° photo, transform to cubic projections")
+        parser.add_argument("--transform360exclude", type=self.comma_list,help="comma separated list of cubic projections to exclude (0-5). 0=left most image ... 3=right most, 4=top, 5=bottom")
+        parser.add_argument("--save-segmentation-images", action='store_true',help="save image with segmantation overlay")
         parser.add_argument("--suppress-warnings", action='store_true',help="suppress warnings (some)")
         
         self.args = vars(parser.parse_args())
@@ -113,6 +118,8 @@ class ImageSegmentation:
             if not "path_model_weights" in config:
                 self.logger.error(f"'path_model_weights' missing from config file '{config_file}'; exiting'")
                 exit()
+
+            config = {k: v.strip() for k,v in config.items()}
 
             # loading config
             external_cfg = config["path_model_cfg"]
@@ -146,8 +153,15 @@ class ImageSegmentation:
         initialize() performs some necessary checks.
         """         
         self.image_dir = self.args["input"]
-        self.tranform360 = self.args["transform360"]
         self.save_segmentation_images = self.args["save_segmentation_images"]
+        self.tranform360 = self.args["transform360"]
+
+        try:
+            self.transform360exclude = list(map(lambda a: int(a.strip()),self.args["transform360exclude"]))
+        except Exception as e:
+            self.transform360exclude = []
+            self.logger.error(f"transform360exclude reset (list items should be integers)")
+        
 
         if not os.path.exists(self.path_model_weights):
             self.logger.error(f"model '{self.path_model_weights}' doesn't exist: exiting")
@@ -194,6 +208,10 @@ class ImageSegmentation:
         """ 
         if self.tranform360:
             self.logger.info(f"transforming 360° photos to cube projections")
+
+            if (len(self.transform360exclude)!=0):
+                self.logger.info(f"skipping cube projection(s) {', '.join(map(lambda a: str(a),self.transform360exclude))}")
+
             new_images = []
             for image_url in self.images:
                 output_folder = os.path.join(self.image_dir,(re.sub(r'[^a-zA-Z\d\s:]','_',re.sub(r'(^[^a-zA-Z\d\s:]*|\.(.*)$)','',os.path.basename(image_url)))) + "/")
@@ -203,7 +221,7 @@ class ImageSegmentation:
 
                 new_paths = self.do_transform360(image_url,output_folder)
                 new_images += new_paths
-                self.logger.info(f"{image_url} --> {output_folder}")
+                self.logger.info(f"{image_url} --> {output_folder} ({len(new_paths)})")
 
             self.images = new_images
             self.images.sort()
@@ -224,10 +242,11 @@ class ImageSegmentation:
         new_paths = []
 
         for i in range(6):
-            name_bits = os.path.splitext(os.path.basename(input_file))
-            new_path = os.path.join(output_folder,f'{name_bits[0]}_{i}{name_bits[1]}')
-            self.transformer.save_pane(new_path, pane=i, dim=512)
-            new_paths.append(new_path)
+            if i not in self.transform360exclude:
+                name_bits = os.path.splitext(os.path.basename(input_file))
+                new_path = os.path.join(output_folder,f'{name_bits[0]}_{i}{name_bits[1]}')
+                self.transformer.save_pane(new_path, pane=i, dim=512)
+                new_paths.append(new_path)
 
         return new_paths
 
