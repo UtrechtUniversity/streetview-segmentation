@@ -160,8 +160,10 @@ class ImageSegmentation:
             self.transform360exclude = list(map(lambda a: int(a.strip()),self.args["transform360exclude"]))
         except Exception as e:
             self.transform360exclude = []
-            self.logger.error(f"transform360exclude reset (list items should be integers)")
-        
+            self.logger.warning(f"transform360exclude reset (list items should be integers)")
+
+        if not self.tranform360 and len(self.transform360exclude)>0:
+            self.logger.warning(f"ignoring --transform360exclude (--tranform360 is absent)")
 
         if not os.path.exists(self.path_model_weights):
             self.logger.error(f"model '{self.path_model_weights}' doesn't exist: exiting")
