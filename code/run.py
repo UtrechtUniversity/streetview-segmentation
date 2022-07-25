@@ -156,14 +156,15 @@ class ImageSegmentation:
         self.save_segmentation_images = self.args["save_segmentation_images"]
         self.tranform360 = self.args["transform360"]
 
-        try:
-            self.transform360exclude = list(map(lambda a: int(a.strip()),self.args["transform360exclude"]))
-        except Exception as e:
-            self.transform360exclude = []
-            self.logger.warning(f"transform360exclude reset (list items should be integers)")
-
         if not self.tranform360 and len(self.transform360exclude)>0:
             self.logger.warning(f"ignoring --transform360exclude (--tranform360 is absent)")
+
+        if self.tranform360:
+            try:
+                self.transform360exclude = list(map(lambda a: int(a.strip()),self.args["transform360exclude"]))
+            except Exception as e:
+                self.transform360exclude = []
+                self.logger.warning(f"transform360exclude reset (list items should be integers)")
 
         if not os.path.exists(self.path_model_weights):
             self.logger.error(f"model '{self.path_model_weights}' doesn't exist: exiting")
@@ -298,7 +299,7 @@ class ImageSegmentation:
         with open(os.path.join(self.image_dir,self.csv_filename), 'w') as f:
 
             csv_header = ["image","total pixels"]
-            for idx, item in enumerate(self.model_metadata.as_dict()["stuff_classes"]):
+            for idx, item in enumerate(calc.get_model_classes()):
                 csv_header.append(f"{idx} ({item})")
 
             csv_writer = csv.writer(f)
@@ -316,23 +317,36 @@ class ImageSegmentation:
                 semantic_result, outputs = self.do_run_prediction(im)
 
                 calc.set_outputs(outputs)
-                calc.calculate_areas()
-                calc.calculate_areas_corrected()
+                calc.set_areas()
 
-                # utils.print_areas(classes=calc.get_classes_sorted(),total_area=calc.get_total_area(),model_metadata=self.model_metadata,logger=self.logger)
-                # utils.print_areas_corrected(classes=calc.get_classes_corrected(),total_area=calc.get_total_area(),logger=self.logger)
+                if self.tranform360:
+                    calc.set_areas_corrected()
+                    classes = calc.get_classes_corrected()
+                else:
+                    classes = calc.get_classes()
 
                 # write to CSV
                 row = [image_url[len(self.image_dir):].rstrip("/"),calc.get_total_area()]
 
-                for jdx, item in enumerate(self.model_metadata.as_dict()["stuff_classes"]):
-                    t = [x for x in calc.get_classes_corrected() if x[0]==jdx]
+                for jdx, item in enumerate(calc.get_model_classes()):
+                    # t = [x for x in calc.get_classes_corrected() if x[0]==jdx]
+                    t = [x for x in classes if x["key"]==jdx]
                     if len(t)>0:
-                        row.append(t[0][2])
+                        # row.append(t[0][2])
+                        row.append(t[0]["pixels"])
                     else:
                         row.append(0)
                 
                 csv_writer.writerow(row)
+
+                # talk to user
+                t = []
+                for i, c in enumerate(classes):
+                    t.append(f'{c["class"]}: {c["percentage"]}%')
+                    if i  >= 2:
+                        break
+
+                self.logger.info(f"top results: {'; '.join(t)}; ...")
 
                 # save copy of image with segmentation overlay
                 if self.save_segmentation_images:
@@ -345,15 +359,6 @@ class ImageSegmentation:
 
                     cv2.imwrite(seg_file, semantic_result)
                     self.logger.info(f"saved '{seg_file}'")
-
-                # talk to user
-                t = []
-                for i, c in enumerate(calc.get_classes_corrected()):
-                    t.append(f'{c[1]}: {c[3]}%')
-                    if i  >= 2:
-                        break
-
-                self.logger.info(f"top results: {'; '.join(t)}; ...")
 
     def do_run_prediction(self,im):
         """
@@ -368,7 +373,6 @@ class ImageSegmentation:
         self.logger.info(f"wrote results to '{os.path.join(self.image_dir,self.csv_filename)}'")
         self.logger.info(f"done")
 
-
 if __name__ == '__main__':
-    i = ImageSegmentation()
-    i.main()
+    seg = ImageSegmentation()
+    seg.main()

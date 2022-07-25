@@ -118,4 +118,12 @@ Parameters are as follows:
 + [detectron2](https://github.com/facebookresearch/detectron2)
 + [three60cube](https://pypi.org/project/three60cube/)
 
-
+## A note on package versions
+Programs that work with CUDA can be sensitive to changes in versions of used packages. Even a change in the minor version of a package can sometimes cause serious problems. To avoid such problems, versions have been explicitly pinned to versions that have proved to work well together. However, after cloning the Mak2Former repository, [its requirements are installed](/UtrechtUniversity/streetview-segmentation/blob/main/Dockerfile#L39), none of which are pinned ([see requirements.txt](https://github.com/facebookresearch/Mask2Former/blob/main/requirements.txt)). If this causes problems in the future, try uninstalling the packages and reinstalling them to the pinned versions listed below.
++ cython==0.29.30
++ scipy==1.8.1
++ shapely==1.8.2
++ timm==0.6.5
++ h5py==3.7.0
++ submitit==1.4.4
++ scikit-image==0.19.3

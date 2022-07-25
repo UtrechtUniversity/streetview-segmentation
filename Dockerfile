@@ -24,9 +24,9 @@ RUN wget \
 
 RUN pip3 install torch==1.10.0
 RUN pip3 install torchvision==0.11.1
-RUN pip3 install opencv-python
+RUN pip3 install opencv-python==4.6.0.66
 RUN pip3 install detectron2==0.6 -f https://dl.fbaipublicfiles.com/detectron2/wheels/cpu/torch1.10/index.html
-RUN pip3 install three60cube
+RUN pip3 install three60cube==0.0.9
 
 RUN mkdir -p /code
 
@@ -35,7 +35,6 @@ RUN git clone https://github.com/facebookresearch/Mask2Former.git
 
 WORKDIR /code/Mask2Former
 
-RUN pip3 install -U opencv-python
 RUN pip3 install git+https://github.com/cocodataset/panopticapi.git
 RUN pip3 install -r requirements.txt
 
