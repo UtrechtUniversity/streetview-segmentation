@@ -107,7 +107,7 @@ The parameter `-v` maps a host directory to one inside the container, allowing t
 
 Parameters are as follows:
 
-+ **config**: path to a JSON-file containing the model paths (mandatory). [example file](code/config.json.example)
++ **config**: path to a JSON-file containing the model paths (mandatory; [example file](code/config.json.example))
 + **input**: folder with images (mandatory). The folder is read non-recursively.
 + **transform360**: order the program to tranform the input photo's from 360° to six cube projections (default: False). If images should be processed _as is_, skip this flag. Transformed images are written to a subdirectory for each 360° image.
 + **transform360exclude**: comma-separated list of sides to exclude from the transformation. sides: 0 = left most, 1 = middle left, 2 = middle right, 3 = right most, 4 = top, 5 = bottom. For instance, `--transform360exclude "4,5"` outputs four projected images, omitting the cube's top and bottom.
