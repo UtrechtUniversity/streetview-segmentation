@@ -15,7 +15,7 @@ import warnings
 import detectron2
 import cv2
 import torch
-import sys, os, csv, re, argparse, datetime, json
+import sys, os, csv, re, argparse, datetime, json, glob
 import utils
 
 from three60cube import Three60Cube
@@ -41,6 +41,7 @@ class ImageSegmentation:
     args = None
 
     image_dir = None
+    recursive = True
     tranform360 = None
     transform360exclude = []
     save_segmentation_images = None
@@ -92,6 +93,7 @@ class ImageSegmentation:
         """         
         parser = argparse.ArgumentParser(description="Semantic segmentation of images")
         parser.add_argument("--input",type=str,required=True,help="path to input folder, e.g. './input/'")
+        parser.add_argument("--non-recursive", action='store_true',help="read the input folder non-recursively")
         parser.add_argument("--config",type=str,required=True,help="path to config file containing model paths")
         parser.add_argument("--transform360", action='store_true',help="input is 360° photo, transform to cubic projections")
         parser.add_argument("--transform360exclude", type=self.comma_list,help="comma separated list of cubic projections to exclude (0-5). 0=left most image ... 3=right most, 4=top, 5=bottom")
@@ -152,7 +154,8 @@ class ImageSegmentation:
         """
         initialize() performs some necessary checks.
         """         
-        self.image_dir = self.args["input"]
+        self.image_dir = self.args["input"].rstrip("/")
+        self.recursive = not self.args["non_recursive"]
         self.save_segmentation_images = self.args["save_segmentation_images"]
         self.tranform360 = self.args["transform360"]
 
@@ -188,20 +191,27 @@ class ImageSegmentation:
         if self.save_segmentation_images:
             self.transformer = Three60Cube()
 
+        self.logger.info(f"valid extensions: {'; '.join(self.valid_extensions)}")
+
     def acquire_images(self):
         """
         acquire_images() reads images from the input folder.
         """ 
         self.images = []
-        for filename in os.listdir(self.image_dir):
-            if os.path.isfile(os.path.join(self.image_dir,filename)) and os.path.splitext(filename)[1].lower() in self.valid_extensions:
-                self.images.append(os.path.join(self.image_dir,filename))
+
+        for filename in glob.iglob(self.image_dir + '**/**', recursive=self.recursive):
+            if os.path.isfile(filename) and os.path.splitext(filename)[1].lower() in self.valid_extensions:
+                self.images.append(filename)
+
+        # for filename in os.listdir(self.image_dir):
+        #     if os.path.isfile(os.path.join(self.image_dir,filename)) and os.path.splitext(filename)[1].lower() in self.valid_extensions:
+        #         self.images.append(os.path.join(self.image_dir,filename))
 
         if (len(self.images)==0):
             self.logger.info(f"found no images in '{self.image_dir}'; exiting")
             exit()
         else:
-            self.logger.info(f"found {len(self.images)} image(s) in '{self.image_dir}'")
+            self.logger.info(f"found {len(self.images)} image(s)")
             self.images.sort()
 
     def transform360(self):
@@ -217,7 +227,10 @@ class ImageSegmentation:
 
             new_images = []
             for image_url in self.images:
-                output_folder = os.path.join(self.image_dir,(re.sub(r'[^a-zA-Z\d\s:]','_',re.sub(r'(^[^a-zA-Z\d\s:]*|\.(.*)$)','',os.path.basename(image_url)))) + "/")
+                output_folder = os.path.join(
+                    os.path.dirname(image_url),
+                    (re.sub(r'[^a-zA-Z\d\s:]','_',re.sub(r'(^[^a-zA-Z\d\s:]*|\.(.*)$)','',os.path.basename(image_url)))) + "/"
+                )
 
                 if not os.path.exists(output_folder):
                     os.mkdir(output_folder)
@@ -310,7 +323,7 @@ class ImageSegmentation:
                     logger.error(f"image '{image_url}' doesn't exist!? (skipping)")
                     continue
 
-                self.logger.info(f"processing '{image_url}' ({idx+1}/{len(self.images)})")
+                self.logger.info(f"processing '{image_url[len(self.image_dir)+1:]}' ({idx+1}/{len(self.images)})")
 
                 # run predictions
                 im = cv2.imread(image_url)
@@ -326,10 +339,9 @@ class ImageSegmentation:
                     classes = calc.get_classes()
 
                 # write to CSV
-                row = [image_url[len(self.image_dir):].rstrip("/"),calc.get_total_area()]
+                row = [image_url[len(self.image_dir)+1:],calc.get_total_area()]
 
                 for jdx, item in enumerate(calc.get_model_classes()):
-                    # t = [x for x in calc.get_classes_corrected() if x[0]==jdx]
                     t = [x for x in classes if x["key"]==jdx]
                     if len(t)>0:
                         # row.append(t[0][2])
@@ -358,7 +370,7 @@ class ImageSegmentation:
                     seg_file = os.path.join(seg_folder,f'{name_bits[0]}-segmentation{name_bits[1]}')
 
                     cv2.imwrite(seg_file, semantic_result)
-                    self.logger.info(f"saved '{seg_file}'")
+                    self.logger.info(f"saved '{seg_file[len(self.image_dir)+1:]}'")
 
     def do_run_prediction(self,im):
         """
