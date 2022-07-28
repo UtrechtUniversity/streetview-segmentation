@@ -41,6 +41,7 @@ class ImageSegmentation:
     args = None
 
     image_dir = None
+    input_image = None
     recursive = True
     tranform360 = None
     transform360exclude = []
@@ -57,6 +58,7 @@ class ImageSegmentation:
     path_model_cfg = None
     path_model_weights = None
     model_metadata_catalog = None
+    csv_filename = None
 
     valid_extensions = [".jpg",".png"]
 
@@ -92,7 +94,7 @@ class ImageSegmentation:
         parse_arguments() parses command line arguments, assigning them to self.vars.
         """         
         parser = argparse.ArgumentParser(description="Semantic segmentation of images")
-        parser.add_argument("--input",type=str,required=True,help="path to input folder, e.g. './input/'")
+        parser.add_argument("--input",type=str,required=True,help="path to input folder, e.g. './input/', or single image, e.g. './input/photo.jpg'")
         parser.add_argument("--non-recursive", action='store_true',help="read the input folder non-recursively")
         parser.add_argument("--config",type=str,required=True,help="path to config file containing model paths")
         parser.add_argument("--transform360", action='store_true',help="input is 360° photo, transform to cubic projections")
@@ -152,12 +154,36 @@ class ImageSegmentation:
 
     def initialize(self):
         """
-        initialize() performs some necessary checks.
-        """         
-        self.image_dir = self.args["input"].rstrip("/")
+        initialize() performs some preliminary checks and actions.
+        """ 
+        if not os.path.exists(self.path_model_weights):
+            self.logger.error(f"model '{self.path_model_weights}' doesn't exist: exiting")
+            exit()
+
+        if not os.path.exists(self.path_model_cfg):
+            self.logger.error(f"model config '{self.path_model_cfg}' doesn't exist: exiting")
+            exit()
+
+        if not os.path.exists(self.args["input"]):
+            self.logger.error(f"input path '{self.args['input']}' does not exist (is the container's volume mapping correct?); exiting")
+            exit()
+
         self.recursive = not self.args["non_recursive"]
         self.save_segmentation_images = self.args["save_segmentation_images"]
         self.tranform360 = self.args["transform360"]
+
+        self.csv_filename = f"results-{self.now.strftime('%Y-%m-%dT%H%M')}"+"-({model_metadata_catalog}).csv"
+
+        if os.path.isfile(self.args["input"]):
+            self.input_image = self.args["input"]
+            self.csv_filename = os.path.join(os.path.dirname(self.input_image),self.csv_filename)
+        else:
+            self.image_dir = self.args["input"].rstrip("/")
+            self.csv_filename = os.path.join(self.image_dir,self.csv_filename)
+
+        if not self.input_image and not self.image_dir:
+            self.logger.error(f"no image path specified; exiting")
+            exit()
 
         if not self.tranform360 and len(self.transform360exclude)>0:
             self.logger.warning(f"ignoring --transform360exclude (--tranform360 is absent)")
@@ -168,22 +194,6 @@ class ImageSegmentation:
             except Exception as e:
                 self.transform360exclude = []
                 self.logger.warning(f"transform360exclude reset (list items should be integers)")
-
-        if not os.path.exists(self.path_model_weights):
-            self.logger.error(f"model '{self.path_model_weights}' doesn't exist: exiting")
-            exit()
-
-        if not os.path.exists(self.path_model_cfg):
-            self.logger.error(f"model config '{self.path_model_cfg}' doesn't exist: exiting")
-            exit()
-
-        if len(self.image_dir)==0:
-            self.logger.error(f"no image path specified; exiting")
-            exit()
-
-        if not os.path.exists(self.image_dir):
-            self.logger.error(f"image path '{self.image_dir}' does not exist (is the container's volume mapping correct?); exiting")
-            exit()
 
         if self.args["suppress_warnings"]:
             warnings.filterwarnings("ignore")
@@ -199,16 +209,20 @@ class ImageSegmentation:
         """ 
         self.images = []
 
-        for filename in glob.iglob(self.image_dir + '**/**', recursive=self.recursive):
-            if os.path.isfile(filename) and os.path.splitext(filename)[1].lower() in self.valid_extensions:
-                self.images.append(filename)
+        if not self.input_image == None and os.path.splitext(self.input_image)[1].lower() in self.valid_extensions:
+            self.images.append(self.input_image)
+            self.image_dir = os.path.dirname(self.input_image)
+        else:
+            for filename in glob.iglob(self.image_dir + '**/**', recursive=self.recursive):
+                if os.path.isfile(filename) and os.path.splitext(filename)[1].lower() in self.valid_extensions:
+                    self.images.append(filename)
 
-        # for filename in os.listdir(self.image_dir):
-        #     if os.path.isfile(os.path.join(self.image_dir,filename)) and os.path.splitext(filename)[1].lower() in self.valid_extensions:
-        #         self.images.append(os.path.join(self.image_dir,filename))
+            # for filename in os.listdir(self.image_dir):
+            #     if os.path.isfile(os.path.join(self.image_dir,filename)) and os.path.splitext(filename)[1].lower() in self.valid_extensions:
+            #         self.images.append(os.path.join(self.image_dir,filename))
 
         if (len(self.images)==0):
-            self.logger.info(f"found no images in '{self.image_dir}'; exiting")
+            self.logger.info(f"found no images; exiting")
             exit()
         else:
             self.logger.info(f"found {len(self.images)} image(s)")
@@ -307,9 +321,10 @@ class ImageSegmentation:
         calc = utils.SegmentationAreasCalculator()
         calc.set_model_metadata(self.model_metadata)
         
-        self.csv_filename = f"segmentation_results-{self.now.strftime('%Y-%m-%dT%H%M')}.csv"
+        # self.csv_filename = f"results-{self.now.strftime('%Y-%m-%dT%H%M')}-({self.model_metadata_catalog}).csv"
+        self.csv_filename = self.csv_filename.format(model_metadata_catalog=self.model_metadata_catalog)
 
-        with open(os.path.join(self.image_dir,self.csv_filename), 'w') as f:
+        with open(self.csv_filename, 'w') as f:
 
             csv_header = ["image","total pixels"]
             for idx, item in enumerate(calc.get_model_classes()):
@@ -362,9 +377,9 @@ class ImageSegmentation:
 
                 # save copy of image with segmentation overlay
                 if self.save_segmentation_images:
-                    seg_folder = os.path.join(os.path.dirname(image_url),"segmentations")
+                    seg_folder = os.path.join(os.path.dirname(image_url),"segmentations",self.model_metadata_catalog)
                     if not os.path.exists(seg_folder):
-                        os.mkdir(seg_folder)
+                        os.makedirs(seg_folder)
 
                     name_bits = os.path.splitext(os.path.basename(image_url))
                     seg_file = os.path.join(seg_folder,f'{name_bits[0]}-segmentation{name_bits[1]}')
