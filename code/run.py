@@ -43,7 +43,7 @@ class ImageSegmentation:
     image_dir = None
     input_image = None
     recursive = True
-    transform360 = None
+    do_transform360 = None
     transform360exclude = []
     save_segmentation_images = None
     model_base_path = None
@@ -170,7 +170,7 @@ class ImageSegmentation:
 
         self.recursive = not self.args["non_recursive"]
         self.save_segmentation_images = self.args["save_segmentation_images"]
-        self.transform360 = self.args["transform360"]
+        self.do_transform360 = self.args["transform360"]
         self.csv_filename = f"results-{self.now.strftime('%Y-%m-%dT%H%M')}"+"-({model_metadata_catalog}).csv"
 
         if os.path.isfile(self.args["input"]):
@@ -187,7 +187,7 @@ class ImageSegmentation:
         if not self.transform360 and len(self.transform360exclude)>0:
             self.logger.warning(f"ignoring --transform360exclude (--transform360 is absent)")
 
-        if self.transform360:
+        if self.do_transform360:
             try:
                 self.transform360exclude = list(map(lambda a: int(a.strip()),self.args["transform360exclude"]))
             except Exception as e:
@@ -232,7 +232,7 @@ class ImageSegmentation:
         transform360() makes a subfolder for each photo to be transformed from a 360° photos to cube projections
         and calls the actula transformer
         """
-        if self.transform360:
+        if self.do_transform360:
             self.logger.info(f"transforming 360° photos to cube projections")
 
             if (len(self.transform360exclude)!=0):
@@ -248,7 +248,7 @@ class ImageSegmentation:
                 if not os.path.exists(output_folder):
                     os.mkdir(output_folder)
 
-                new_paths = self.do_transform360(image_url,output_folder)
+                new_paths = self._transform360(image_url,output_folder)
                 new_images += new_paths
                 self.logger.info(f"{image_url} --> {output_folder} ({len(new_paths)})")
 
@@ -258,9 +258,9 @@ class ImageSegmentation:
         else:
             self.logger.info(f"skipping transformation to cube projection")
 
-    def do_transform360(self,input_file,output_folder):
+    def _transform360(self,input_file,output_folder):
         """
-        do_transform360() does the actual transformation of a 360° photos to 6 cubic panes.
+        _transform360() does the actual transformation of a 360° photos to 6 cubic panes.
         """
         self.transformer.open_image(input_file)
         self.transformer.get_pane(pane=1, dim=512)
@@ -342,7 +342,7 @@ class ImageSegmentation:
 
                 # run predictions
                 im = cv2.imread(image_url)
-                semantic_result, outputs = self.do_run_prediction(im)
+                semantic_result, outputs = self._run_prediction(im)
 
                 calc.set_outputs(outputs)
                 calc.set_areas()
@@ -380,16 +380,21 @@ class ImageSegmentation:
                     seg_folder = os.path.join(os.path.dirname(image_url),"segmentations",self.model_metadata_catalog)
                     if not os.path.exists(seg_folder):
                         os.makedirs(seg_folder)
+                        for folder in [os.path.join(os.path.dirname(image_url),"segmentations"),seg_folder]:
+                            os.chmod(folder, 0o777)
 
                     name_bits = os.path.splitext(os.path.basename(image_url))
                     seg_file = os.path.join(seg_folder,f'{name_bits[0]}-segmentation{name_bits[1]}')
 
                     cv2.imwrite(seg_file, semantic_result)
+                    os.chmod(seg_file, 0o777)
                     self.logger.info(f"saved '{seg_file[len(self.image_dir)+1:]}'")
 
-    def do_run_prediction(self,im):
+        os.chmod(self.csv_filename, 0o777)
+
+    def _run_prediction(self,im):
         """
-        do_run_prediction() runs the actual predictions.
+        _run_prediction() runs the actual predictions.
         """
         outputs = self.predictor(im)
         v = Visualizer(im[:, :, ::-1], self.model_metadata, scale=1, instance_mode=ColorMode.IMAGE_BW)
@@ -399,6 +404,7 @@ class ImageSegmentation:
     def finalize(self):
         self.logger.info(f"wrote results to '{os.path.join(self.image_dir,self.csv_filename)}'")
         self.logger.info(f"done")
+
 
 if __name__ == '__main__':
     seg = ImageSegmentation()

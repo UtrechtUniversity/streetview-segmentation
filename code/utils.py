@@ -1,4 +1,4 @@
-import logging, os
+import logging, os, stat
 import numpy as np
 
 def get_logger(name):
@@ -36,7 +36,7 @@ class SegmentationAreasCalculator:
     def get_model_classes(self):
         """
         get_model_classes() returns all available "stuff" classes in the model.
-        """         
+        """
         return self.stuff_classes
 
     def get_classes(self):
@@ -45,22 +45,22 @@ class SegmentationAreasCalculator:
         they take up. per class, a dict is returned containing "key", "class", "pixels" and "percentage".
         note, this is not a complete list of all classes present in the model, only those that are actually
         present in the image. a complete list is available by calling get_model_classes()
-        """         
-        return self.classes  
+        """
+        return self.classes
 
     def get_classes_corrected(self):
         """
         get_classes_corrected() as get_classes(), but corrected for the deviations that occur due to the 360°
         image being projected onto a cube.
-        """         
-        return self.classes_corrected  
+        """
+        return self.classes_corrected
 
     def get_total_area(self):
         return self.total_area
 
     def set_areas(self):
         class_ids, counts = np.unique(self.semantic_outputs, return_counts=True)
-        self.classes = dict(zip(class_ids, counts))        
+        self.classes = dict(zip(class_ids, counts))
         self.set_total_area()
 
         classes = []
@@ -72,9 +72,9 @@ class SegmentationAreasCalculator:
 
     def set_areas_corrected(self):
         """
-        calculate_areas_corrected() corrected for the deviations that occur due to the 360° image being projected 
+        calculate_areas_corrected() corrected for the deviations that occur due to the 360° image being projected
         onto a cube.
-        """         
+        """
         # correct cubic weights
         fac = self.do_cubic_weighted_weights(np.shape(self.semantic_outputs))
         fac = fac.reshape(np.shape(self.semantic_outputs))
@@ -110,5 +110,3 @@ class SegmentationAreasCalculator:
         fac = (dx**2+dy**2+1)**-1.5
 
         return fac
-
-
