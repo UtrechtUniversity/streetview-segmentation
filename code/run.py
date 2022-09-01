@@ -43,7 +43,7 @@ class ImageSegmentation:
     image_dir = None
     input_image = None
     recursive = True
-    tranform360 = None
+    transform360 = None
     transform360exclude = []
     save_segmentation_images = None
     model_base_path = None
@@ -81,7 +81,7 @@ class ImageSegmentation:
         """
         set_base_paths() sets base paths from constants; LOCAL_MODEL_BASE_PATH & LOCAL_CODE_BASE_PATH
         are currently fixed but could at some point be made to be set by the user.
-        """         
+        """
         self.code_base_path = "/" + LOCAL_CODE_BASE_PATH.lstrip("/")
         self.model_base_path = "/" + LOCAL_MODEL_BASE_PATH.lstrip("/")
         self.mask2former_repo = MASK2FORMER_REPO
@@ -92,7 +92,7 @@ class ImageSegmentation:
     def parse_arguments(self):
         """
         parse_arguments() parses command line arguments, assigning them to self.vars.
-        """         
+        """
         parser = argparse.ArgumentParser(description="Semantic segmentation of images")
         parser.add_argument("--input",type=str,required=True,help="path to input folder, e.g. './input/', or single image, e.g. './input/photo.jpg'")
         parser.add_argument("--non-recursive", action='store_true',help="read the input folder non-recursively")
@@ -101,7 +101,7 @@ class ImageSegmentation:
         parser.add_argument("--transform360exclude", type=self.comma_list,help="comma separated list of cubic projections to exclude (0-5). 0=left most image ... 3=right most, 4=top, 5=bottom")
         parser.add_argument("--save-segmentation-images", action='store_true',help="save image with segmantation overlay")
         parser.add_argument("--suppress-warnings", action='store_true',help="suppress warnings (some)")
-        
+
         self.args = vars(parser.parse_args())
 
     def read_configuration(self):
@@ -155,7 +155,7 @@ class ImageSegmentation:
     def initialize(self):
         """
         initialize() performs some preliminary checks and actions.
-        """ 
+        """
         if not os.path.exists(self.path_model_weights):
             self.logger.error(f"model '{self.path_model_weights}' doesn't exist: exiting")
             exit()
@@ -170,8 +170,7 @@ class ImageSegmentation:
 
         self.recursive = not self.args["non_recursive"]
         self.save_segmentation_images = self.args["save_segmentation_images"]
-        self.tranform360 = self.args["transform360"]
-
+        self.transform360 = self.args["transform360"]
         self.csv_filename = f"results-{self.now.strftime('%Y-%m-%dT%H%M')}"+"-({model_metadata_catalog}).csv"
 
         if os.path.isfile(self.args["input"]):
@@ -185,10 +184,10 @@ class ImageSegmentation:
             self.logger.error(f"no image path specified; exiting")
             exit()
 
-        if not self.tranform360 and len(self.transform360exclude)>0:
-            self.logger.warning(f"ignoring --transform360exclude (--tranform360 is absent)")
+        if not self.transform360 and len(self.transform360exclude)>0:
+            self.logger.warning(f"ignoring --transform360exclude (--transform360 is absent)")
 
-        if self.tranform360:
+        if self.transform360:
             try:
                 self.transform360exclude = list(map(lambda a: int(a.strip()),self.args["transform360exclude"]))
             except Exception as e:
@@ -206,7 +205,7 @@ class ImageSegmentation:
     def acquire_images(self):
         """
         acquire_images() reads images from the input folder.
-        """ 
+        """
         self.images = []
 
         if not self.input_image == None and os.path.splitext(self.input_image)[1].lower() in self.valid_extensions:
@@ -232,8 +231,8 @@ class ImageSegmentation:
         """
         transform360() makes a subfolder for each photo to be transformed from a 360° photos to cube projections
         and calls the actula transformer
-        """ 
-        if self.tranform360:
+        """
+        if self.transform360:
             self.logger.info(f"transforming 360° photos to cube projections")
 
             if (len(self.transform360exclude)!=0):
@@ -262,7 +261,7 @@ class ImageSegmentation:
     def do_transform360(self,input_file,output_folder):
         """
         do_transform360() does the actual transformation of a 360° photos to 6 cubic panes.
-        """ 
+        """
         self.transformer.open_image(input_file)
         self.transformer.get_pane(pane=1, dim=512)
         self.transformer.save_cache("templ.pickle")
@@ -283,7 +282,7 @@ class ImageSegmentation:
     def load_model(self):
         """
         load_model() creates a configuration, and load the model. explicitly forces CPU as device.
-        """ 
+        """
         cfg = get_cfg()
         cfg.MODEL.DEVICE = "cpu"
         add_deeplab_config(cfg)
@@ -310,17 +309,18 @@ class ImageSegmentation:
         self.model_metadata_catalog = cfg.get("DATASETS").get("TEST")[0]
         self.model_metadata = MetadataCatalog.get(self.model_metadata_catalog)
         self.logger.info(f"using metadata catalog '{self.model_metadata_catalog}'")
+        print()
 
     def run_predictions(self):
         """
         run_predictions() loops through all images, and has the model perform predictions, outputting the
         results as CSV and optionally as images with overlaid semantic segmentations.
-        """ 
+        """
         self.logger.info(f"running predictions on {len(self.images)} image(s)")
 
         calc = utils.SegmentationAreasCalculator()
         calc.set_model_metadata(self.model_metadata)
-        
+
         # self.csv_filename = f"results-{self.now.strftime('%Y-%m-%dT%H%M')}-({self.model_metadata_catalog}).csv"
         self.csv_filename = self.csv_filename.format(model_metadata_catalog=self.model_metadata_catalog)
 
@@ -347,7 +347,7 @@ class ImageSegmentation:
                 calc.set_outputs(outputs)
                 calc.set_areas()
 
-                if self.tranform360:
+                if self.transform360:
                     calc.set_areas_corrected()
                     classes = calc.get_classes_corrected()
                 else:
@@ -363,7 +363,7 @@ class ImageSegmentation:
                         row.append(t[0]["pixels"])
                     else:
                         row.append(0)
-                
+
                 csv_writer.writerow(row)
 
                 # talk to user
@@ -390,7 +390,7 @@ class ImageSegmentation:
     def do_run_prediction(self,im):
         """
         do_run_prediction() runs the actual predictions.
-        """ 
+        """
         outputs = self.predictor(im)
         v = Visualizer(im[:, :, ::-1], self.model_metadata, scale=1, instance_mode=ColorMode.IMAGE_BW)
         semantic_result = v.draw_sem_seg(outputs["sem_seg"].argmax(0).to("cpu")).get_image()

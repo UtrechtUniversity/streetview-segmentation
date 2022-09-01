@@ -63,21 +63,18 @@ If the configuration of a specific model is not present in the container (for ex
 after the instance of the container was built), it can be made available to the script from a location outside of the container,
 much in the same way as a weights file (see next paragraph). Download the configuration file or files, make them available to
 the container via a volume mapping, and update the value for `path_model_cfg` accordingly. The script will first look for the
-file in its Mask2Former repository, and, if it isn't found there, subsequently in the absolute location specified in `path_model_cfg`.
+absolute location as specified in `path_model_cfg`; if it doesn't exist, it will subsequently look in the Mask2Former repository.
 For example, if `path_model_cfg` is set to
 
 `/data/model/config/my_maskformer2.yaml`
 
-the script will first look for
+the script will first look in that literal path, which can be mapped to a folder on the host-machine. If that doesn't exist,
+it will look for
 
 `../Mask2Former/data/model/config/my_maskformer2.yaml`
 
-and failing that, look for
-
-`/data/model/config/my_maskformer2.yaml`
-
-which is a location that can be mapped to a folder on the host-machine. When using a external configuration, make sure to include *all*
-yaml-files required; model configurations are usually made up of several files, chained by \_BASE\_ statements.
+When using a external configuration, make sure to include *all* yaml-files required; model configurations are usually made up of
+several files, chained by \_BASE\_ statements.
 
 
 ### Weights-file
