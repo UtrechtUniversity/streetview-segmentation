@@ -12,7 +12,8 @@ This script is specifically designed to run on a computer without a GPU. Some of
 require the presence of CUDA-drivers to run, even if the actual device is absent. As it can be problematic to
 install such drivers on a computer without an actual GPU, the program is packaged as Docker-container, based on
 an official NVIDIA-image, which comes with pre-installed drivers. Building and running the container requires
-the presence of [Docker enginge](https://docs.docker.com/engine/install/).
+the presence of [Docker engine](https://docs.docker.com/engine/install/). Note that the container is based on a
+Linux image (Ububtu 18.04); running it on a Windows computer may require extra configuration.
 
 ## Building the docker container
 Check out this repository, and to build, run:
