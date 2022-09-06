@@ -42,6 +42,7 @@ class ImageSegmentation:
 
     image_dir = None
     input_image = None
+    output_folder = None
     recursive = True
     do_transform360 = None
     transform360exclude = []
@@ -95,10 +96,12 @@ class ImageSegmentation:
         """
         parser = argparse.ArgumentParser(description="Semantic segmentation of images")
         parser.add_argument("--input",type=str,required=True,help="path to input folder, e.g. './input/', or single image, e.g. './input/photo.jpg'")
+        parser.add_argument("--output",type=str,required=True,help="path to output folder")
         parser.add_argument("--non-recursive", action='store_true',help="read the input folder non-recursively")
         parser.add_argument("--config",type=str,required=True,help="path to config file containing model paths")
         parser.add_argument("--transform360", action='store_true',help="input is 360° photo, transform to cubic projections")
         parser.add_argument("--transform360exclude", type=self.comma_list,help="comma separated list of cubic projections to exclude (0-5). 0=left most image ... 3=right most, 4=top, 5=bottom")
+        parser.add_argument("--cubic-correct", action='store_true',help="implicit in transform360")
         parser.add_argument("--save-segmentation-images", action='store_true',help="save image with segmantation overlay")
         parser.add_argument("--suppress-warnings", action='store_true',help="suppress warnings (some)")
 
@@ -175,14 +178,26 @@ class ImageSegmentation:
 
         if os.path.isfile(self.args["input"]):
             self.input_image = self.args["input"]
-            self.csv_filename = os.path.join(os.path.dirname(self.input_image),self.csv_filename)
+            self.logger.info(f"input image: {self.input_image}")
         else:
             self.image_dir = self.args["input"].rstrip("/")
-            self.csv_filename = os.path.join(self.image_dir,self.csv_filename)
+            self.logger.info(f"input directory: {self.image_dir}")
 
         if not self.input_image and not self.image_dir:
             self.logger.error(f"no image path specified; exiting")
             exit()
+
+        if not self.args["output"] == None:
+            self.output_folder = self.args["output"]
+            if not os.path.exists(self.output_folder):
+                os.makedirs(self.output_folder)
+                utils.chmod_recursively(self.output_folder)
+        else:
+            self.output_folder = os.path.dirname(self.input_image) if self.input_image else self.image_dir
+
+        self.logger.info(f"output directory: {self.output_folder}")
+
+        self.csv_filename = os.path.join(self.output_folder,self.csv_filename)
 
         if not self.transform360 and len(self.transform360exclude)>0:
             self.logger.warning(f"ignoring --transform360exclude (--transform360 is absent)")
@@ -216,10 +231,6 @@ class ImageSegmentation:
                 if os.path.isfile(filename) and os.path.splitext(filename)[1].lower() in self.valid_extensions:
                     self.images.append(filename)
 
-            # for filename in os.listdir(self.image_dir):
-            #     if os.path.isfile(os.path.join(self.image_dir,filename)) and os.path.splitext(filename)[1].lower() in self.valid_extensions:
-            #         self.images.append(os.path.join(self.image_dir,filename))
-
         if (len(self.images)==0):
             self.logger.info(f"found no images; exiting")
             exit()
@@ -246,10 +257,12 @@ class ImageSegmentation:
                 )
 
                 if not os.path.exists(output_folder):
-                    os.mkdir(output_folder)
+                    os.makedirs(output_folder)
+
 
                 new_paths = self._transform360(image_url,output_folder)
                 new_images += new_paths
+                utils.chmod_recursively(output_folder)
                 self.logger.info(f"{image_url} --> {output_folder} ({len(new_paths)})")
 
             self.images = new_images
@@ -377,20 +390,25 @@ class ImageSegmentation:
 
                 # save copy of image with segmentation overlay
                 if self.save_segmentation_images:
-                    seg_folder = os.path.join(os.path.dirname(image_url),"segmentations",self.model_metadata_catalog)
+                    # seg_folder = os.path.join(os.path.dirname(image_url),"segmentations",self.model_metadata_catalog)
+                    relative_subfolder = os.path.dirname(image_url).replace(self.image_dir,'')
+                    seg_folder = os.path.join(self.output_folder,relative_subfolder,self.model_metadata_catalog)
+
+                    self.logger.info(seg_folder)
+
                     if not os.path.exists(seg_folder):
                         os.makedirs(seg_folder)
-                        for folder in [os.path.join(os.path.dirname(image_url),"segmentations"),seg_folder]:
-                            os.chmod(folder, 0o777)
+                        # for folder in [os.path.join(os.path.dirname(image_url),"segmentations"),seg_folder]:
 
                     name_bits = os.path.splitext(os.path.basename(image_url))
                     seg_file = os.path.join(seg_folder,f'{name_bits[0]}-segmentation{name_bits[1]}')
 
                     cv2.imwrite(seg_file, semantic_result)
-                    os.chmod(seg_file, 0o777)
+                    utils.chmod_recursively(seg_file, 0o777)
                     self.logger.info(f"saved '{seg_file[len(self.image_dir)+1:]}'")
 
-        os.chmod(self.csv_filename, 0o777)
+        # utils.chmod_recursively(self.csv_filename, 0o777)
+        utils.chmod_recursively(self.output_folder, 0o777)
 
     def _run_prediction(self,im):
         """
@@ -402,7 +420,7 @@ class ImageSegmentation:
         return semantic_result, outputs
 
     def finalize(self):
-        self.logger.info(f"wrote results to '{os.path.join(self.image_dir,self.csv_filename)}'")
+        self.logger.info(f"wrote results to '{self.csv_filename}'")
         self.logger.info(f"done")
 
 

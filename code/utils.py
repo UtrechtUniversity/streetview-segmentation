@@ -13,6 +13,15 @@ def get_logger(name):
     logger.addHandler(ch)
     return logger
 
+def chmod_recursively(file_or_folder,mask=0o777):
+    os.chmod(file_or_folder,mask)
+    if os.path.isdir(file_or_folder):
+        for path,subdir,files in os.walk(file_or_folder):
+           for name in subdir:
+               os.chmod(os.path.join(path,name),mask)
+           for name in files:
+               os.chmod(os.path.join(path,name),mask)
+
 class SegmentationAreasCalculator:
 
     semantic_outputs = None

@@ -119,6 +119,10 @@ Even when suppressing warnings, you may be presented with warnings when running 
 + A warning about risks due to unsafe YAML-loading. As the only YAML-files loaded come from the Mask2Former repository, and are loaded inside a virtual environment, these can, under normal circumstances, be safely ignored.
 + A warning about a changed weight format from the Transformer Decoder. The weights are automatically converted to the correct format.
 
+### Known issues
+Incidentally, the program has been observed to stop during the prediction phase, without any warnings or error messages. This is usually associated with a sharp increase in memory use, and can be solved by reducing the input images' size, or by using a different prediction model.
+
+
 ## Used libraries
 + [Mask2Former](https://github.com/facebookresearch/Mask2Former)
 + [detectron2](https://github.com/facebookresearch/detectron2)
