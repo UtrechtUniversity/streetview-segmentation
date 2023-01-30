@@ -101,7 +101,6 @@ docker run -v /local/path/to/data:/data --rm -it my_tag:latest \
 	--transform360 \
 	--transform360exclude "5" \
 	--save-segmentation-images \
-	--cubic-correct \
 	--suppress-warnings
 ```
 The parameter `-v` maps a host directory to one inside the container, allowing the container access to files on the host computer. Mappings have the form of `<path on host>:<path in container>`; it's advised to always use '/data' for the second part.
