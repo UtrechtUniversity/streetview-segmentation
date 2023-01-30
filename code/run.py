@@ -315,7 +315,10 @@ class ImageSegmentation:
             if i not in self.transform360exclude:
                 name_bits = os.path.splitext(os.path.basename(input_file))
                 new_path = os.path.join(output_folder,f'{name_bits[0]}_{i}{name_bits[1]}')
-                self.transformer.save_pane(new_path, pane=i, dim=512)
+                if not os.path.exists(new_path):
+                    self.transformer.save_pane(new_path, pane=i, dim=512)
+                else:
+                    self.logger.info("%s already exists; skipping.", new_path) 
                 new_paths.append(new_path)
 
         return new_paths
