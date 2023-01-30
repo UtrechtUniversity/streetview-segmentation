@@ -318,7 +318,7 @@ class ImageSegmentation:
                 if not os.path.exists(new_path):
                     self.transformer.save_pane(new_path, pane=i, dim=512)
                 else:
-                    self.logger.info("%s already exists; skipping.", new_path) 
+                    self.logger.info("skipping pane %s ('%s' already exists).", i, new_path) 
                 new_paths.append(new_path)
 
         return new_paths
