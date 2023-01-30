@@ -101,7 +101,6 @@ class ImageSegmentation:
         parser.add_argument("--config",type=str,required=True,help="path to config file containing model paths")
         parser.add_argument("--transform360", action='store_true',help="input is 360° photo, transform to cubic projections")
         parser.add_argument("--transform360exclude", type=self.comma_list,help="comma separated list of cubic projections to exclude (0-5). 0=left most image ... 3=right most, 4=top, 5=bottom")
-        parser.add_argument("--cubic-correct", action='store_true',help="implicit in transform360")
         parser.add_argument("--save-segmentation-images", action='store_true',help="save image with segmantation overlay")
         parser.add_argument("--suppress-warnings", action='store_true',help="suppress warnings (some)")
 
@@ -258,7 +257,6 @@ class ImageSegmentation:
 
                 if not os.path.exists(output_folder):
                     os.makedirs(output_folder)
-
 
                 new_paths = self._transform360(image_url,output_folder)
                 new_images += new_paths
