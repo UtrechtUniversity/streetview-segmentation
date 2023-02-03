@@ -1,0 +1,4 @@
+{
+    "path_model_cfg" : "/configs/coco/panoptic-segmentation/swin/maskformer2_swin_large_IN21k_384_bs16_100ep.yaml",
+    "path_model_weights" : "/data/models/coco_panoptic/model_final_f07440.pkl"
+}

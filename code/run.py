@@ -354,7 +354,6 @@ class ImageSegmentation:
         self.model_metadata_catalog = cfg.get("DATASETS").get("TEST")[0]
         self.model_metadata = MetadataCatalog.get(self.model_metadata_catalog)
         self.logger.info("using metadata catalog '%s'", self.model_metadata_catalog)
-        print()
 
     def run_predictions(self):
         """

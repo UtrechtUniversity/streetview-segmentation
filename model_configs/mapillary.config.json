@@ -1,0 +1,4 @@
+{
+    "path_model_cfg" : "/configs/mapillary-vistas/panoptic-segmentation/swin/maskformer2_swin_large_IN21k_384_bs16_300k.yaml",
+    "path_model_weights" : "/data/models/mapillary/model_final_132c71.pkl"
+}

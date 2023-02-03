@@ -1,0 +1,4 @@
+{
+    "path_model_cfg" : "/configs/cityscapes/panoptic-segmentation/swin/maskformer2_swin_large_IN21k_384_bs16_90k.yaml",
+    "path_model_weights" : "/data/models/cityscapes/model_final_064788.pkl"
+}

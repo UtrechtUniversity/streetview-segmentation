@@ -1,0 +1,4 @@
+{
+    "path_model_cfg" : "/configs/ade20k/semantic-segmentation/swin/maskformer2_swin_large_IN21k_384_bs16_160k_res640.yaml",
+    "path_model_weights" : "/data/models/ADE20K/model_final_6b4a3a.pkl"
+}
