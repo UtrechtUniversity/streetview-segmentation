@@ -411,6 +411,7 @@ class ImageSegmentation:
                         row.append(0)
 
                 csv_writer.writerow(row)
+                file.flush()
 
                 # talk to user
                 buff = []
